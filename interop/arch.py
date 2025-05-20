@@ -27,6 +27,10 @@ from libp2p.stream_muxer.mplex.mplex import (
     MPLEX_PROTOCOL_ID,
     Mplex,
 )
+from libp2p.stream_muxer.yamux.yamux import (
+    Yamux,
+)
+from libp2p.stream_muxer.yamux.yamux import PROTOCOL_ID as YAMUX_PROTOCOL_ID
 
 
 def generate_new_rsa_identity() -> KeyPair:
@@ -39,7 +43,19 @@ async def build_host(transport: str, ip: str, port: str, sec_protocol: str, muxe
             key_pair = create_new_key_pair()
             host = new_host(
                 key_pair,
-                {MPLEX_PROTOCOL_ID: Mplex},
+                {TProtocol(MPLEX_PROTOCOL_ID): Mplex},
+                {
+                    TProtocol(PLAINTEXT_PROTOCOL_ID): InsecureTransport(key_pair),
+                    TProtocol(secio.ID): secio.Transport(key_pair),
+                },
+            )
+            muladdr = multiaddr.Multiaddr(f"/ip4/{ip}/tcp/{port}")
+            return (host, muladdr)
+        case ("insecure", "yamux"):
+            key_pair = create_new_key_pair()
+            host = new_host(
+                key_pair,
+                {TProtocol(YAMUX_PROTOCOL_ID): Yamux},
                 {
                     TProtocol(PLAINTEXT_PROTOCOL_ID): InsecureTransport(key_pair),
                     TProtocol(secio.ID): secio.Transport(key_pair),
