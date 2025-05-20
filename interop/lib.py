@@ -82,7 +82,7 @@ async def run_test(
 
             logger.info(f"Test instance, listening: {ma}")
         else:
-            redis_addr = redis_client.blpop("listenerAddr", timeout=5)
+            redis_addr = redis_client.brpop("listenerAddr", timeout=5)
             destination = redis_addr[0].decode()
             maddr = multiaddr.Multiaddr(destination)
             info = info_from_p2p_addr(maddr)

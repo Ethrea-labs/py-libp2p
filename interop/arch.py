@@ -71,8 +71,8 @@ async def build_host(transport: str, ip: str, port: str, sec_protocol: str, muxe
 class RedisClient:
     client: redis.Redis
 
-    def blpop(self, key: str, timeout: float) -> list[str]:
-        result = self.client.blpop([key], timeout)
+    def brpop(self, key: str, timeout: float) -> list[str]:
+        result = self.client.brpop([key], timeout)
         return [result[1]] if result else []
 
     def rpush(self, key: str, value: str) -> None:
