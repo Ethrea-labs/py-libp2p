@@ -28,6 +28,9 @@ from cryptography.hazmat.primitives.asymmetric import (
 from cryptography.x509.oid import (
     NameOID,
 )
+from loguru import (
+    logger,
+)
 from multiaddr import (
     Multiaddr,
 )
@@ -86,7 +89,7 @@ class QuicListener(IListener):
         while self._running:
             try:
                 data, addr = await self.transport._server.recvfrom(1200)
-                print(f"Received datagram of size {len(data)} bytes from {addr}")
+                logger.debug("Datagrams received")
 
                 connection = self.transport.connections.get(addr)
                 if connection is None:
@@ -275,10 +278,12 @@ class QuicTransport(ITransport):
             # Abort on failure, store Peer ID on success
             pass
 
-        print(context.get_ciphers())
+        # print(context.get_ciphers())
 
         # Add logging to verify configuration
-        print(f"QUIC Transport initialized with host: {self.host}, port: {self.port}")
+        logger.debug(
+            f"QUIC Transport initialized with host: {self.host}, port: {self.port}"
+        )
 
     def get_addrs(self) -> tuple[Multiaddr, ...]:
         if not self._server:
@@ -296,7 +301,7 @@ class QuicTransport(ITransport):
             )
             await self._server.bind((self.host, self.port))
             self.port = self._server.getsockname()[1]
-            print(f"Listening on {self.host}:{self.port}")  # Add logging
+            logger.info(f"Listening on {self.host}:{self.port}")  # Add logging
         except Exception as e:
             raise TransportError(f"Failed to start QUIC server: {e}") from e
 
@@ -333,26 +338,27 @@ class QuicTransport(ITransport):
             protocol._connection = connection
             protocol._remote_address = (host, port)
 
+            logger.debug(f"Dialing: {host}:{port}")
             connection.connect((host, port), now=time.time())
-            print(f"Attempting to connect to {host}:{port}")
 
             sock = trio.socket.socket(trio.socket.AF_INET, trio.socket.SOCK_DGRAM)
             await sock.connect((host, port))
 
             with trio.move_on_after(self.handshake_timeout):
                 while True:
-                    datagrams = connection.datagrams_to_send(time.time())
-                    for data, _ in datagrams:
-                        if len(data) > 1200:
-                            print(
-                                f"Warning: Truncating oversized datagram from :"
-                                f"{len(data)} to 1200 bytes"
-                            )
-                            data = data[:1200]
-                        await sock.send(data)
-                        print(
-                            f"Sent datagram of size {len(data)} bytes to {host}:{port}"
-                        )
+                    connection.datagrams_to_send(time.time())
+                    logger.debug("Datagrams sent")
+                    # for data, _ in datagrams:
+                    #     if len(data) > 1200:
+                    #         print(
+                    #             f"Warning: Truncating oversized datagram from :"
+                    #             f"{len(data)} to 1200 bytes"
+                    #         )
+                    #         data = data[:1200]
+                    #     await sock.send(data)
+                    # print(
+                    #     f"Sent datagram of size {len(data)} bytes to {host}:{port}"
+                    # )
 
                     try:
                         data = await sock.recv(1200)
